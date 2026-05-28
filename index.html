@@ -473,29 +473,82 @@ async function fetchDashboardData() {
 
         const latest = data[0].diagnosis;
 
-        document.getElementById("card-actual-cop")
-            .innerText = latest.actual_cop;
+        // ===== WARNING CHECK =====
 
-        document.getElementById("card-system-cop")
-            .innerText = latest.system_cop;
+        let superheatWarning = "";
+        let subcoolWarning = "";
+        let prWarning = "";
+        let copWarning = "";
 
-        document.getElementById("card-ql")
-            .innerText = latest.calculated_ql_kw + " kW";
+        // Superheat
+        if (latest.superheat_suc < 0) {
+            superheatWarning = " ⚠️ Floodback Risk";
+        } else if (latest.superheat_suc > 15) {
+            superheatWarning = " ⚠️ High Superheat";
+        }
 
-        document.getElementById("card-superheat")
-            .innerText = latest.superheat_suc + " °C";
+        // Subcooling
+        if (latest.subcooling < 2) {
+            subcoolWarning = " ⚠️ Low Subcooling";
+        } else if (latest.subcooling > 15) {
+            subcoolWarning = " ⚠️ High Subcooling";
+        }
 
-        document.getElementById("card-subcool")
-            .innerText = latest.subcooling + " °C";
+        // Pressure Ratio
+        if (latest.pressure_ratio > 10) {
+            prWarning = " ⚠️ High Compression Ratio";
+        }
 
-        document.getElementById("card-pr")
-            .innerText = latest.pressure_ratio;
+        // COP
+        if (latest.actual_cop < 1.5) {
+            copWarning = " ⚠️ Low Efficiency";
+        }
+
+        // ===== SET CARD =====
+
+document.getElementById("card-actual-cop")
+    .innerHTML = `
+        ${latest.actual_cop}
+        ${copWarning
+            ? `<div class="text-sm text-red-400 mt-1 font-semibold">${copWarning}</div>`
+            : ""}
+    `;
+
+document.getElementById("card-system-cop")
+    .innerText = latest.system_cop;
+
+document.getElementById("card-ql")
+    .innerText = latest.calculated_ql_kw + " kW";
+
+document.getElementById("card-superheat")
+    .innerHTML = `
+        ${latest.superheat_suc} °C
+        ${superheatWarning
+            ? `<div class="text-sm text-red-500 mt-1 font-semibold">${superheatWarning}</div>`
+            : ""}
+    `;
+
+document.getElementById("card-subcool")
+    .innerHTML = `
+        ${latest.subcooling} °C
+        ${subcoolWarning
+            ? `<div class="text-sm text-red-500 mt-1 font-semibold">${subcoolWarning}</div>`
+            : ""}
+    `;
+
+document.getElementById("card-pr")
+    .innerHTML = `
+        ${latest.pressure_ratio}
+        ${prWarning
+            ? `<div class="text-sm text-red-500 mt-1 font-semibold">${prWarning}</div>`
+            : ""}
+    `;
 
         buildDiagnosisReport(latest);
 
-buildAlarmLog(data);
+        buildAlarmLog(data);
 
-renderCharts(data);
+        renderCharts(data);
 
         document.getElementById("connection-status")
             .innerText = "● LIVE";
