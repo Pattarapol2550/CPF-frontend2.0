@@ -550,13 +550,16 @@ document.getElementById("card-pr")
 
         renderCharts(data);
 
-        document.getElementById("connection-status")
-            .innerText = "● LIVE";
+        const connStatus = document.getElementById("connection-status");
+        connStatus.innerText = "● LIVE";
+        connStatus.classList.remove("bg-gray-500"); // ลบสีเทาออก
+        connStatus.classList.add("bg-green-500", "text-white");
 
     } catch (err) {
-
-        document.getElementById("connection-status")
-            .innerText = "● ERROR";
+    const connStatus = document.getElementById("connection-status");
+    connStatus.innerText = "● ERROR";
+    connStatus.classList.remove("bg-green-500"); // ลบสีเขียวออก
+    connStatus.classList.add("bg-red-500" , "text-white");     // เพิ่มสีเทา
     }
 }
 
