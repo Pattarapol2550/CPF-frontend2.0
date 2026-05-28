@@ -205,9 +205,14 @@
 
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
 
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-b pb-2">
-                Analysis Report
-            </h3>
+            <div class="flex items-center justify-between border-b pb-2 mb-4">
+                <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                    Analysis Report
+                </h3>
+                <span id="report-timestamp-badge" class="hidden text-xs bg-blue-50 border border-blue-200 text-blue-700 font-semibold px-3 py-1 rounded-full">
+                    📍 <span id="report-timestamp-label"></span>
+                </span>
+            </div>
 
             <div id="diagnosis-report-container">
                 ไม่มีข้อมูล
@@ -216,9 +221,14 @@
 
     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
 
-        <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-b pb-2">
-            Alarm History
-        </h3>
+        <div class="flex items-center justify-between border-b pb-2 mb-4">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                Alarm History
+            </h3>
+            <span id="alarm-timestamp-badge" class="hidden text-xs bg-blue-50 border border-blue-200 text-blue-700 font-semibold px-3 py-1 rounded-full">
+                📍 <span id="alarm-timestamp-label"></span>
+            </span>
+        </div>
 
         <div id="alarm-log-container" style="max-height: 420px; overflow-y: auto;">
             ไม่มี Alarm
@@ -441,10 +451,11 @@
 
 <script>
 
-//const API_URL = "http://127.0.0.1:8000/api/metrics";
-const API_URL = "https://cpfbackend2-0.onrender.com/api/metrics"
+const API_URL = "http://127.0.0.1:8000/api/metrics";
+//const API_URL = "https://cpfbackend2-0.onrender.com/api/metrics"
 
 let copChartInstance = null;
+let allRecords = [];
 
 function updateClock() {
     const now = new Date();
@@ -622,6 +633,9 @@ document.getElementById("card-pr")
 
         buildAlarmLog(data);
 
+        allRecords = data;
+        clearTimestampBadge();
+
         renderCharts(data);
 
         const connStatus = document.getElementById("connection-status");
@@ -690,16 +704,14 @@ function buildDiagnosisReport(diag) {
     container.innerHTML = html;
 }
 
-function buildAlarmLog(records) {
+function buildAlarmLog(records, singleRecord = false) {
 
     const container = document.getElementById("alarm-log-container");
 
     let html = "";
-
     let hasAlarm = false;
-
     let alarmCount = 0;
-    const MAX_ALARMS = 3;
+    const MAX_ALARMS = singleRecord ? Infinity : 60;
 
     records.forEach(record => {
 
@@ -763,6 +775,31 @@ function buildAlarmLog(records) {
                 ✅ ไม่พบ Alarm
             </div>
         `;
+}
+
+function setTimestampBadge(timestampStr) {
+    const label = formatThaiTime(timestampStr);
+    ["report", "alarm"].forEach(prefix => {
+        document.getElementById(`${prefix}-timestamp-badge`).classList.remove("hidden");
+        document.getElementById(`${prefix}-timestamp-label`).innerText = label;
+    });
+}
+
+function clearTimestampBadge() {
+    ["report", "alarm"].forEach(prefix => {
+        document.getElementById(`${prefix}-timestamp-badge`).classList.add("hidden");
+    });
+}
+
+function showRecordAtIndex(index) {
+    // records are reversed in processedData, so index maps to allRecords reversed
+    const reversed = [...allRecords].reverse();
+    const record = reversed[index];
+    if (!record) return;
+
+    setTimestampBadge(record.timestamp);
+    buildDiagnosisReport(record.diagnosis);
+    buildAlarmLog([record], true);
 }
 
 function renderCharts(records) {
@@ -830,7 +867,9 @@ function renderCharts(records) {
                     data: processedData.map(r => r.actual),
                     borderColor: 'green',
                     tension: 0.3,
-                    spanGaps: true
+                    spanGaps: true,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: 'green',
                 },
 
                 {
@@ -838,7 +877,9 @@ function renderCharts(records) {
                     data: processedData.map(r => r.system),
                     borderColor: 'orange',
                     tension: 0.3,
-                    spanGaps: true
+                    spanGaps: true,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: 'orange',
                 },
 
                 {
@@ -846,7 +887,9 @@ function renderCharts(records) {
                     data: processedData.map(r => r.cycle),
                     borderColor: 'pink',
                     tension: 0.3,
-                    spanGaps: true
+                    spanGaps: true,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: 'pink',
                 }
             ]
         },
@@ -857,10 +900,35 @@ function renderCharts(records) {
 
             maintainAspectRatio: false,
 
+            onClick(event, elements) {
+                if (elements.length === 0) return;
+                const index = elements[0].index;
+                showRecordAtIndex(index);
+
+                // Scroll up to report section
+                document.getElementById("diagnosis-report-container")
+                    .scrollIntoView({ behavior: "smooth", block: "start" });
+            },
+
+            onHover(event, elements) {
+                event.native.target.style.cursor =
+                    elements.length > 0 ? "pointer" : "default";
+            },
+
             scales: {
 
                 y: {
                     beginAtZero: true
+                }
+            },
+
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        footer(items) {
+                            return "คลิกเพื่อดู Report ณ เวลานี้";
+                        }
+                    }
                 }
             }
         }
